@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Maestro Corona Gil&amp;Gil</title>
+  <meta name="theme-color" content="#1a1512">
+  <meta name="description" content="Círculos armónicos, escalas y teclado del acordeón diatónico Hohner Tres Coronas.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">♛</span>
+      <div>
+        <strong>Maestro Corona Gil&amp;Gil</strong>
+        <small>Hohner Tres Coronas · 31 pitos · 12 bajos</small>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="installBtn" class="primary install hidden">⬇ Instalar app</button>
+      <label>Tono del acordeón <select id="tuning"></select></label>
+      <label>Sonido del acordeón <select id="voice"></select></label>
+      <label>Vibración
+        <span class="inline"><input type="range" id="tremolo" min="0" max="35" step="1"><output id="tremoloOut"></output></span>
+      </label>
+      <label>Notación
+        <select id="notation">
+          <option value="latin">Do Re Mi</option>
+          <option value="anglo">C D E</option>
+        </select>
+      </label>
+      <label>Mostrar en pitos
+        <select id="display">
+          <option value="both">Cerrando y abriendo</option>
+          <option value="push">Solo cerrando</option>
+          <option value="pull">Solo abriendo</option>
+        </select>
+      </label>
+    </div>
+  </header>
+
+  <main>
+    <section class="card instrument">
+      <div class="scroll-x">
+        <div class="accordion">
+          <div class="side">
+            <div class="part-title">Mano derecha<br>Pitos</div>
+            <svg id="treble" class="keys"></svg>
+          </div>
+          <div id="bellows" class="bellows">
+            <div class="bw-label" id="bellowsLabel">FUELLE</div>
+            <div class="bw-stage">
+              <span class="bw-arrow left" id="arrowL"></span>
+              <div class="bw-body">
+                <div class="bw-frame"></div>
+                <div class="bw-pleats">
+                  <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                </div>
+                <div class="bw-frame"></div>
+              </div>
+              <span class="bw-arrow right" id="arrowR"></span>
+            </div>
+            <div class="bw-sub" id="bellowsSub">Toca un botón</div>
+          </div>
+          <div class="side">
+            <div class="part-title">Mano izquierda<br>Bajos</div>
+            <svg id="bass" class="keys"></svg>
+          </div>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i class="dot push"></i>Adentro · cerrando el fuelle</span>
+        <span><i class="dot pull"></i>Afuera · abriendo el fuelle</span>
+        <span><i class="dot both"></i>Ambas direcciones</span>
+        <span><i class="sq"></i>Botón de acorde (bajos)</span>
+        <span class="muted">En cada pito: arriba = cerrando, abajo = abriendo</span>
+      </div>
+    </section>
+
+    <div class="work">
+    <nav class="tabs">
+      <button data-tab="circles" class="active">Círculos armónicos</button>
+      <button data-tab="scales">Escalas</button>
+      <button data-tab="explore">Explorar</button>
+    </nav>
+
+    <section class="card tab" id="tab-circles">
+      <div class="toolbar">
+        <label>Tonalidad <select id="cKey"></select></label>
+        <label>Círculo <select id="cType"></select></label>
+        <label>Tempo <input type="range" id="cTempo" min="40" max="180" value="90"><output id="cTempoOut">90</output></label>
+        <button id="cPlay" class="primary">▶ Reproducir círculo</button>
+      </div>
+      <div class="circle-wrap">
+        <svg id="circleSvg" viewBox="0 0 320 320"></svg>
+        <div id="chordInfo" class="chord-info"></div>
+      </div>
+    </section>
+
+    <section class="card tab hidden" id="tab-scales">
+      <div class="toolbar">
+        <label>Tónica <select id="sRoot"></select></label>
+        <label>Escala <select id="sType"></select></label>
+        <label>Mano
+          <select id="sHand">
+            <option value="pitos">Pitos (mano derecha)</option>
+            <option value="bajos">Bajos (mano izquierda)</option>
+            <option value="ambas">Pitos + bajos</option>
+          </select>
+        </label>
+        <label>Tocar en <select id="sInt"></select></label>
+        <label>Octava inicial
+          <select id="sOct"><option value="3">3 (grave)</option><option value="4" selected>4 (media)</option><option value="5">5 (aguda)</option></select>
+        </label>
+        <label>Extensión
+          <select id="sSpan"><option value="1" selected>1 octava</option><option value="2">2 octavas</option></select>
+        </label>
+      </div>
+      <div class="toolbar">
+        <button id="sPlay" class="primary">▶ Reproducir</button>
+        <button id="sPrev">◀ Paso</button>
+        <button id="sNext">Paso ▶</button>
+        <button id="sMap">Ver recorrido completo</button>
+        <label>Tempo <input type="range" id="sTempo" min="40" max="200" value="100"><output id="sTempoOut">100</output></label>
+      </div>
+      <div id="scaleSummary" class="summary"></div>
+      <div id="steps" class="steps"></div>
+    </section>
+
+    <section class="card tab hidden" id="tab-explore">
+      <div class="toolbar">
+        <div class="seg" id="dirSeg">
+          <button data-dir="push" class="active push">→ ← Cerrando</button>
+          <button data-dir="pull" class="pull">← → Abriendo</button>
+        </div>
+        <label>Buscar nota <select id="eFind"></select></label>
+        <button id="eClear">Limpiar</button>
+      </div>
+      <p class="muted">Toca cualquier pito o bajo para escucharlo en la dirección elegida.
+        Barra espaciadora: cambiar dirección del fuelle.</p>
+      <div id="exploreInfo" class="summary"></div>
+    </section>
+    </div>
+  </main>
+
+  <script src="js/layout.js"></script>
+  <script src="js/music.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/install.js"></script>
+</body>
+</html>
