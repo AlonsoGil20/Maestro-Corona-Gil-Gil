@@ -9,6 +9,10 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Maestro Corona">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -304,6 +308,18 @@
   </section>
   </div>
 </main>
+
+  <dialog id="iosHelp" class="ios-help">
+    <h3>Instalar en tu iPhone o iPad</h3>
+    <ol>
+      <li>Toca <span id="iosWhere">el botón Compartir</span> <span class="ios-icon">⬆︎</span>.</li>
+      <li>Baja en el menú y toca <b>«Agregar a pantalla de inicio»</b> <span class="ios-icon">＋</span>.</li>
+      <li>Toca <b>«Agregar»</b> arriba a la derecha.</li>
+    </ol>
+    <p>La app aparece en tu pantalla de inicio con el ícono de la corona y se abre como una app normal, también sin internet.</p>
+    <p class="muted">Si no ves la opción, abre esta página en <b>Safari</b>.</p>
+    <button id="iosClose" class="primary">Entendido</button>
+  </dialog>
 
   <script src="js/layout.js"></script>
   <script src="js/music.js"></script>

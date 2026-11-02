@@ -1,6 +1,7 @@
 /* Service worker: guarda la app para que funcione sin internet.
-   Sirve primero lo guardado y actualiza en segundo plano. Sube VERSION al publicar cambios grandes. */
-const VERSION = 'maestro-corona-v5';
+   Con internet siempre trae la versión más nueva (así nunca se mezclan archivos viejos y nuevos);
+   sin internet usa lo guardado. Sube VERSION al publicar cambios. */
+const VERSION = 'maestro-corona-v7';
 const FILES = [
   './',
   './index.html',
@@ -20,7 +21,10 @@ const FILES = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  // cache: 'reload' evita guardar copias viejas que el navegador tenga en su memoria
+  e.waitUntil(caches.open(VERSION)
+    .then(c => c.addAll(FILES.map(f => new Request(f, { cache: 'reload' }))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -34,10 +38,13 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
   e.respondWith(caches.open(VERSION).then(async cache => {
-    const cached = await cache.match(e.request, { ignoreSearch: true });
-    const fresh = fetch(e.request)
-      .then(res => { if (res.ok) cache.put(e.request, res.clone()); return res; })
-      .catch(() => cached);
-    return cached || fresh;
+    try {
+      const res = await fetch(e.request, { cache: 'no-cache' });
+      if (res.ok) cache.put(e.request, res.clone());
+      return res;
+    } catch {
+      const cached = await cache.match(e.request, { ignoreSearch: true });
+      return cached || Response.error();
+    }
   }));
 });

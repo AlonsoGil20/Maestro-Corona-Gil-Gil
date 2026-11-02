@@ -240,6 +240,14 @@ svg.keys { height: auto; display: block; }
   .circle-wrap { grid-template-columns: 1fr; }
   #circleSvg { max-width: 340px; margin: 0 auto; }
   main { padding: 10px; }
+  /* En el celular la barra de arriba no se queda fija: tapaba las pestañas y las opciones */
+  .topbar { position: static; padding: 10px 12px; }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; width: 100%; }
+  .controls select { width: 100%; }
+  .controls .install { grid-column: 1 / -1; }
+  .tabs { position: sticky; top: 0; z-index: 5; background: var(--bg); padding-top: 6px; }
+  body { overflow-anchor: none; }  /* que el navegador no mueva la página al cambiar de pestaña */
+  .tabs button { flex: 1; padding: 9px 8px; font-size: 13px; }
 }
 
 /* ---------- Pentagrama ---------- */
@@ -367,3 +375,13 @@ label.check { flex-direction: row; align-items: center; gap: 6px; font-size: 13p
 .instr { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: -4px 0 12px; font-size: 13px; color: var(--muted); }
 .instr .seg button { padding: 5px 12px; font-size: 13px; }
 .instr .seg button.active { background: var(--gold); border-color: var(--gold); color: #241a0b; font-weight: 700; }
+
+/* Instrucciones para instalar en iPhone */
+.ios-help { max-width: 360px; width: calc(100% - 32px); background: var(--card); color: var(--text);
+  border: 1px solid var(--gold); border-radius: 16px; padding: 18px; }
+.ios-help::backdrop { background: #000a; }
+.ios-help h3 { margin: 0 0 10px; color: var(--gold); }
+.ios-help ol { padding-left: 20px; margin: 0 0 10px; line-height: 1.6; }
+.ios-help .ios-icon { display: inline-block; min-width: 22px; text-align: center; border: 1px solid var(--line);
+  border-radius: 6px; background: #2d2520; color: var(--pull); font-weight: 700; }
+.ios-help button { width: 100%; margin-top: 6px; }

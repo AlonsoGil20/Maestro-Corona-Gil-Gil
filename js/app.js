@@ -739,6 +739,11 @@ if (S.tab === 'solfeo') {
     $$('.tabs button').forEach(b => b.classList.toggle('active', b === btn));
     $$('.tab').forEach(t => t.classList.toggle('hidden', t.id !== `tab-${S.tab}`));
     refreshTab();
+    // En el celular, mostrar el comienzo de la pestaña (si quedó arriba, fuera de la pantalla)
+    if (window.innerWidth < 760) setTimeout(() => {
+      const top = $('.work').getBoundingClientRect().top;
+      if (top < 0) window.scrollBy(0, top);
+    }, 0);
   }));
 
 $('#cStaff').addEventListener('click', e => {
