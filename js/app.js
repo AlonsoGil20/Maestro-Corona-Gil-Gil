@@ -1,3 +1,6 @@
+/* Comunicación entre app.js y solfeo.js */
+const App = { hooks: {} };
+
 (() => {
   const $ = s => document.querySelector(s);
   const $$ = s => [...document.querySelectorAll(s)];
@@ -13,7 +16,11 @@
     hl: new Map(), bhl: new Map(), timer: null,
     circle: null, selChord: 0, scale: null, selStep: -1,
   };
-  let L;
+let L;
+const store = {
+  get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } },
+};
 
   /* ---------------- Distribución actual ---------------- */
   function buildLayout() {
@@ -59,7 +66,8 @@
   const GRAD = `<defs><linearGradient id="gBoth" x1="0" y1="0" x2="0" y2="1">
     <stop offset="50%" stop-color="var(--push)"/><stop offset="50%" stop-color="var(--pull)"/></linearGradient></defs>`;
 
-  function keySVG(b, cx, cy, R, label, hl, isChord) {
+  function keySVG(b, cx, cy, R, rawLabel, hl, isChord) {
+    const label = d => (S.hideNames && S.tab === 'solfeo' ? '' : rawLabel(d));
     const showPush = S.display !== 'pull', showPull = S.display !== 'push';
     let cls = 'key' + (isChord ? ' chord' : '');
     if (hl) cls += ' hl ' + hl.dir;
@@ -84,7 +92,9 @@
         <rect x="${-w / 2}" y="-9" width="${w}" height="18" rx="9" fill="var(--gold)" stroke="#241a0b"/>
         <text y="4">${t}</text></g>`;
     }
-    return `<g class="${cls}" data-id="${b.id}" transform="translate(${cx},${cy})">${cap}${inner}${badge}</g>`;
+    const halves = `<rect class="half" data-d="push" x="${-R}" y="${-R}" width="${2 * R}" height="${R}"/>
+      <rect class="half" data-d="pull" x="${-R}" y="0" width="${2 * R}" height="${R}"/>`;
+    return `<g class="${cls}" data-id="${b.id}" transform="translate(${cx},${cy})">${cap}${inner}${badge}${halves}</g>`;
   }
 
   // Teclado vertical: pito 1 arriba. Columnas de izquierda a derecha: 1ª hilera (afuera), 2ª, 3ª (junto al fuelle).
@@ -209,7 +219,7 @@
       const rootPc = Music.pc(keyPc + steps[d.deg]);
       const letter = (rootLetter + d.deg) % 7;
       const tones = q.iv.map((iv, k) => ({
-        pc: Music.pc(rootPc + iv), name: Music.spell((letter + q.lt[k]) % 7, rootPc + iv),
+        pc: Music.pc(rootPc + iv), name: Music.spell((letter + q.lt[k]) % 7, rootPc + iv), letter: (letter + q.lt[k]) % 7,
       }));
       const voicings = findVoicings(tones, q.optional);
       return {
@@ -284,7 +294,24 @@
         <circle r="${r}"/><text class="nm" y="2">${ch.name}</text><text class="dg" y="19">${ch.deg}</text></g>`;
     });
     $('#circleSvg').innerHTML = h;
+    renderCircleStaff();
   }
+
+function renderCircleStaff() {
+  const events = S.circle.chords.map(ch => {
+    const v = chordVoicing(ch);
+    const letterOfPc = p => (ch.tones.find(t => t.pc === Music.pc(p)) || {}).letter;
+    return {
+      notes: {
+        treble: v ? v.buttons.map(b => ({ midi: b[v.dir], letter: letterOfPc(b[v.dir]) })) : [],
+        bass: [{ midi: bassMidi(ch.rootPc), letter: ch.tones[0].letter }],
+      },
+      cls: v ? v.dir : 'na',
+      lines: [{ t: ch.name, cls: 'b' }, ch.deg, { t: v ? DIRS[v.dir].arrow : '✕', cls: v ? v.dir : '' }],
+    };
+  });
+  Staff.render($('#cStaff'), { staves: ['treble', 'bass'], events, colW: 74, cur: S.selChord });
+}
 
   function renderChordInfo() {
     const ch = S.circle.chords[S.selChord];
@@ -427,11 +454,14 @@
 
     const len = sc.chromatic ? 12 : sc.steps.length;
     const note = (d, desc) => {
-      if (sc.chromatic) { const m = tonic + d; return { midi: m, name: Music.name(m, desc ? 'flat' : 'sharp') }; }
+      if (sc.chromatic) {
+        const m = tonic + d, l = Music.letterOf(m, desc ? 'flat' : 'sharp');
+        return { midi: m, name: Music.spell(l, m), letter: l };
+      }
       const steps = desc && sc.desc ? sc.desc : sc.steps;
       const m = tonic + 12 * Math.floor(d / len) + steps[d % len];
       const letter = sc.letters ? sc.letters[d % len] : d % len;
-      return { midi: m, name: Music.spell((rl + letter) % 7, m) };
+      return { midi: m, name: Music.spell((rl + letter) % 7, m), letter: (rl + letter) % 7 };
     };
     // Los saltos de octava (7) y décima (9) se adaptan a escalas de 5 notas
     const degJump = k => (k >= 7 ? k - 7 + len : k);
@@ -439,7 +469,7 @@
     const chord = (d, desc) => {
       const lower = note(d, desc);
       const upper = iv.stack.map((k, j) => sc.chromatic
-        ? { midi: lower.midi + iv.semis[j], name: Music.name(lower.midi + iv.semis[j], desc ? 'flat' : 'sharp') }
+        ? (m => { const l = Music.letterOf(m, desc ? 'flat' : 'sharp'); return { midi: m, name: Music.spell(l, m), letter: l }; })(lower.midi + iv.semis[j])
         : note(d + degJump(k), desc));
       return [lower, ...upper];
     };
@@ -482,6 +512,7 @@
     S.scale = { steps, ascLen, name: `${sc.name} de ${Music.spell(rl, root)}`, iv, hand };
     S.selStep = -1;
     renderSteps();
+    renderScaleStaff();
     showWholePath();
   }
 
@@ -518,6 +549,26 @@
     }).join('');
   }
 
+function renderScaleStaff() {
+  const { steps, hand } = S.scale;
+  const bassNote = s => ({ midi: bassMidi(Music.pc(s.notes[0].midi)), letter: s.notes[0].letter });
+  const events = steps.map(s => {
+    const o = s.opt;
+    const lines = [...s.notes].reverse().map(n => ({ t: n.name, cls: 'b' }));
+    lines.push({ t: o ? DIRS[o.dir].arrow : '✕', cls: o ? o.dir : '' });
+    if (o && o.btns.length === 1) lines.push(refAny(o.btns[0]));
+    return {
+      notes: {
+        treble: hand === 'bajos' ? [] : s.notes,
+        bass: hand === 'bajos' ? [bassNote(s)] : s.bass ? [bassNote(s)] : [],
+      },
+      cls: o ? o.dir : 'na', lines,
+    };
+  });
+  const staves = hand === 'bajos' ? ['bass'] : hand === 'ambas' ? ['treble', 'bass'] : ['treble'];
+  Staff.render($('#sStaff'), { staves, events, colW: S.scale.iv.stack.length > 1 && hand !== 'bajos' ? 52 : 46 });
+}
+
   function showWholePath() {
     clearHl();
     S.scale.steps.slice(0, S.scale.ascLen).forEach((s, k) => {
@@ -527,6 +578,7 @@
     setBellows(null);
     S.selStep = -1;
     $$('.step.active').forEach(e => e.classList.remove('active'));
+    Staff.mark($('#sStaff'), -1);
     renderKeys();
   }
 
@@ -548,6 +600,7 @@
     } else setBellows(null);
     renderKeys();
     $$('.step').forEach(e => e.classList.toggle('active', +e.dataset.i === S.selStep));
+    Staff.mark($('#sStaff'), S.selStep);
   }
 
   function playScale() {
@@ -568,6 +621,7 @@
     S.timer = null;
     $('#cPlay').textContent = '▶ Reproducir círculo';
     $('#sPlay').textContent = '▶ Reproducir';
+    if (App.hooks.stop) App.hooks.stop();
   }
 
   /* ---------------- Pestaña: explorar ---------------- */
@@ -600,6 +654,18 @@
     if (!g) return;
     const map = isBass ? S.bhl : S.hl;
     const b = (isBass ? L.bass : L.treble).find(x => x.id === g.dataset.id);
+if (S.tab === 'solfeo') {
+  // Mitad de arriba del botón = cerrando, mitad de abajo = abriendo
+  const half = e.target.closest('.half');
+  const dir = half ? half.dataset.d : S.dir;
+  if (App.hooks.keyClick && App.hooks.keyClick(b, dir, isBass) === false) return;
+  if (isBass) {
+    if (b.type === 'bass') Sound.bass(bassMidi(b[dir]));
+    else Sound.bassChord(bassChordMidis(b[dir]));
+  } else Sound.treble([b[dir]]);
+  setBellows(dir);
+  return;
+}
     const h = map.get(b.id);
     const dir = S.tab === 'explore' ? S.dir
       : h && h.dir !== 'both' ? h.dir
@@ -645,7 +711,10 @@
     stop();
     if (S.tab === 'circles') computeCircle();
     else if (S.tab === 'scales') computeScale();
-    else { setDir(S.dir); findNote(); }
+    else if (S.tab === 'solfeo') {
+      clearHl(); setBellows(null); renderKeys();
+      if (App.hooks.refresh) App.hooks.refresh();
+    } else { setDir(S.dir); findNote(); }
   }
 
   function refreshAll(resetKey) {
@@ -672,6 +741,14 @@
     refreshTab();
   }));
 
+$('#cStaff').addEventListener('click', e => {
+  const c = e.target.closest('[data-i]');
+  if (c) { stop(); selectChord(+c.dataset.i); }
+});
+$('#sStaff').addEventListener('click', e => {
+  const c = e.target.closest('[data-i]');
+  if (c) { stop(); selectStep(+c.dataset.i); }
+});
   $('#cKey').addEventListener('change', () => { fillCircleTypes(); S.selChord = 0; computeCircle(); });
   $('#cType').addEventListener('change', () => { S.selChord = 0; computeCircle(); });
   $('#cPlay').addEventListener('click', playCircle);
@@ -702,10 +779,6 @@
   });
 
   /* ---------------- Sonido del acordeón ---------------- */
-  const store = {
-    get: k => { try { return localStorage.getItem(k); } catch { return null; } },
-    set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } },
-  };
   const demo = () => Sound.treble([60, 64, 67], 1.1);
 
   function setVoice(id, cents) {
@@ -739,6 +812,15 @@
 
   $('#treble').addEventListener('click', e => onKeyClick(e, false));
   $('#bass').addEventListener('click', e => onKeyClick(e, true));
+
+  // Lo que usa solfeo.js (se carga después)
+  Object.assign(App, {
+    S, DIRS, store, other,
+    nn, nnOct, refAny, bassMidi, bassChordMidis,
+    addHl, clearHl, renderKeys, setBellows, circleChords, playChord,
+    tabOpen: tab => $(`.tabs button[data-tab="${tab}"]`).click(),
+  });
+  Object.defineProperty(App, 'L', { get: () => L });  // la distribución cambia con el tono
 
   refreshAll(true);
 })();

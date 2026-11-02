@@ -31,6 +31,12 @@ const Music = (() => {
       : { 1: 'flat', 3: 'flat', 6: 'sharp', 8: 'flat', 10: 'flat' };
     return table[pc(p)] || 'sharp';
   }
+  // Posición en el pentagrama: step = octava·7 + letra (Do4 = 28); acc = sostenidos (+) o bemoles (−).
+  function staffPos(m, letter) {
+    if (letter == null) letter = letterOf(m, 'mixed');
+    const acc = ((pc(m) - LETTER_PC[letter] + 18) % 12) - 6;
+    return { step: (Math.round((m - acc - LETTER_PC[letter]) / 12) - 1) * 7 + letter, acc };
+  }
   const keyName = (p, mode) => spell(letterOf(p, rootPref(p, mode)), p) + (mode === 'min' ? ' menor' : ' mayor');
 
   const SCALES = {
@@ -90,7 +96,7 @@ const Music = (() => {
   };
 
   return {
-    pc, spell, letterOf, name, octave, rootPref, keyName,
+    pc, spell, letterOf, name, octave, rootPref, keyName, staffPos,
     SCALES, INTERVALS, CHORDS, DEGREES, CIRCLES,
     setNotation: n => { notation = n; },
   };

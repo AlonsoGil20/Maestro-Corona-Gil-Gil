@@ -86,6 +86,7 @@
       <button data-tab="circles" class="active">Círculos armónicos</button>
       <button data-tab="scales">Escalas</button>
       <button data-tab="explore">Explorar</button>
+      <button data-tab="solfeo">🎼 Solfeo</button>
     </nav>
 
     <section class="card tab" id="tab-circles">
@@ -99,6 +100,8 @@
         <svg id="circleSvg" viewBox="0 0 320 320"></svg>
         <div id="chordInfo" class="chord-info"></div>
       </div>
+      <div class="sub">En el pentagrama · toca un acorde para escucharlo</div>
+      <div class="staff-wrap"><svg id="cStaff" class="staff"></svg></div>
     </section>
 
     <section class="card tab hidden" id="tab-scales">
@@ -128,6 +131,7 @@
         <label>Tempo <input type="range" id="sTempo" min="40" max="200" value="100"><output id="sTempoOut">100</output></label>
       </div>
       <div id="scaleSummary" class="summary"></div>
+      <div class="staff-wrap"><svg id="sStaff" class="staff"></svg></div>
       <div id="steps" class="steps"></div>
     </section>
 
@@ -143,14 +147,170 @@
       <p class="muted">Toca cualquier pito o bajo para escucharlo en la dirección elegida.
         Barra espaciadora: cambiar dirección del fuelle.</p>
       <div id="exploreInfo" class="summary"></div>
-    </section>
+  </section>
+
+  <section class="card tab hidden" id="tab-solfeo">
+    <div class="seg modes" id="solMode">
+      <button data-m="camino" class="active">🎯 Camino</button>
+      <button data-m="lectura">📖 Lectura</button>
+      <button data-m="oido">👂 Oído</button>
+      <button data-m="ritmo">🥁 Ritmo</button>
+      <button data-m="mic">🎤 Micrófono</button>
+      <button data-m="canto">🗣 Cantar</button>
+      <button data-m="progreso">📈 Progreso</button>
     </div>
-  </main>
+    <div class="instr">
+      <span>Sonido de los ejercicios:</span>
+      <div class="seg" id="solInstr">
+        <button data-i="acordeon" class="active">🪗 Acordeón</button>
+        <button data-i="piano">🎹 Piano</button>
+      </div>
+    </div>
+    <div id="goalBar" class="goal hidden"></div>
+
+    <div class="pane" id="pane-camino">
+      <div id="goalList"></div>
+    </div>
+
+    <div class="pane hidden" id="pane-lectura">
+      <div class="toolbar">
+        <label>Nivel <select id="lLevel"></select></label>
+        <label class="check"><input type="checkbox" id="lHide"> Ocultar nombres en el acordeón</label>
+        <button id="lStart" class="primary">▶ Empezar</button>
+        <button id="lHint">💡 Pista</button>
+        <button id="lSkip">Saltar ⏭</button>
+      </div>
+      <div class="game">
+        <div class="staff-wrap big"><svg id="lStaff" class="staff"></svg></div>
+        <div class="game-side">
+          <div id="lMsg" class="game-msg">Pulsa «Empezar» y toca en el acordeón la nota que aparece.</div>
+          <div class="score">Aciertos <b id="lOk">0</b> · Fallos <b id="lBad">0</b> · Racha <b id="lStreak">0</b> <span id="lTime"></span></div>
+        </div>
+      </div>
+      <p class="muted">Cada pito tiene dos notas: toca la <b style="color:var(--push)">mitad de arriba</b> para cerrar el fuelle (adentro)
+        o la <b style="color:var(--pull)">mitad de abajo</b> para abrirlo (afuera). La octava cuenta.</p>
+    </div>
+
+    <div class="pane hidden" id="pane-oido">
+      <div class="toolbar">
+        <label>Ejercicio
+          <select id="oType">
+            <option value="notas">Notas de la escala</option>
+            <option value="intervalos">Intervalos</option>
+            <option value="acordes">Acordes</option>
+            <option value="circulos">Círculos armónicos</option>
+            <option value="dictado">Dictado: repite la melodía</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="oHard"> Más difícil</label>
+        <button id="oPlay" class="primary">▶ Nueva pregunta</button>
+        <button id="oRepeat">🔁 Repetir</button>
+      </div>
+      <div id="oMsg" class="game-msg">Escucha y elige la respuesta.</div>
+      <div id="oAnswers" class="answers"></div>
+      <div class="score">Aciertos <b id="oOk">0</b> · Fallos <b id="oBad">0</b> · Racha <b id="oStreak">0</b></div>
+    </div>
+
+    <div class="pane hidden" id="pane-ritmo">
+      <div class="toolbar">
+        <label>Ejercicio <select id="rLesson"></select></label>
+        <label>Tempo <span class="inline"><input type="range" id="rTempo" min="40" max="200"><output id="rTempoOut"></output></span></label>
+        <label class="check"><input type="checkbox" id="rGuide" checked> Escuchar el ritmo mientras practico</label>
+      </div>
+      <div class="toolbar">
+        <button id="rListen">🔊 Escuchar</button>
+        <button id="rPractice" class="primary">🥁 Practicar</button>
+        <button id="rTap" class="tap">TOCA AQUÍ<small>o barra espaciadora o cualquier botón del acordeón</small></button>
+      </div>
+      <div class="staff-wrap"><svg id="rStaff" class="staff"></svg></div>
+      <div id="rInfo" class="note"></div>
+      <div id="rMsg" class="game-msg"></div>
+    </div>
+
+    <div class="pane hidden" id="pane-mic">
+      <div class="toolbar">
+        <label>Qué tocar
+          <select id="mLevel">
+            <option value="escala">Notas de la escala</option>
+            <option value="alteradas">Con sostenidos y bemoles</option>
+            <option value="libre">Libre (afinador)</option>
+          </select>
+        </label>
+        <button id="mOn" class="primary">🎤 Activar micrófono</button>
+        <button id="mSkip">Saltar ⏭</button>
+      </div>
+      <div class="game">
+        <div class="staff-wrap big"><svg id="mStaff" class="staff"></svg></div>
+        <div class="game-side">
+          <div class="tuner">
+            <div class="tuner-note dim" id="mNote">—</div>
+            <div class="tuner-bar"><span></span><i id="mNeedle"></i></div>
+            <div class="tuner-cents" id="mCents">Micrófono apagado</div>
+          </div>
+          <div id="mMsg" class="game-msg"></div>
+          <div class="score">Aciertos <b id="mOk">0</b> · Racha <b id="mStreak">0</b></div>
+        </div>
+      </div>
+      <p class="muted">Toca tu acordeón real cerca del computador, en un lugar sin ruido, y deja sonar la nota un momento.
+        La primera vez Chrome te pedirá permiso para usar el micrófono. La app reconoce qué nota suena y te muestra
+        en qué pitos está; no sabe si la tocaste cerrando o abriendo, porque suena igual.</p>
+    </div>
+
+    <div class="pane hidden" id="pane-canto">
+      <div class="toolbar">
+        <label>Qué cantar
+          <select id="vEx">
+            <option value="nota">Una nota</option>
+            <option value="escala">La escala (Do Re Mi… subiendo y bajando)</option>
+            <option value="melodia">Leer y cantar una melodía</option>
+          </select>
+        </label>
+        <label>Tu voz
+          <select id="vVoice">
+            <option value="grave">Grave (hombre) · clave de fa</option>
+            <option value="aguda">Aguda (mujer o niño) · clave de sol</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="vHelp" checked> Tocar cada nota antes de cantarla</label>
+      </div>
+      <div class="toolbar">
+        <button id="vOn" class="primary">🎤 Activar micrófono</button>
+        <button id="vNew">↺ Nuevo</button>
+        <button id="vTone">🎵 Dar el tono</button>
+        <button id="vHear">🔊 Escuchar lo que falta</button>
+      </div>
+      <div class="staff-wrap"><svg id="vStaff" class="staff"></svg></div>
+      <div class="game">
+        <div class="sing-now" id="vNow"></div>
+        <div class="game-side">
+          <div class="tuner">
+            <div class="tuner-note dim" id="vNote">—</div>
+            <div class="tuner-bar"><span></span><i id="vNeedle"></i></div>
+            <div class="tuner-cents" id="vCents">Micrófono apagado</div>
+          </div>
+          <div id="vMsg" class="game-msg"></div>
+          <div class="score">Notas afinadas <b id="vOk">0</b> · Ejercicios completos <b id="vDone">0</b></div>
+        </div>
+      </div>
+      <p class="muted">Solfear es cantar cada nota diciendo su nombre: «Do, Re, Mi…». Canta con la voz firme y sostén cada nota
+        hasta que se ponga verde. No importa en qué octava cantes. Mientras la app toca la guía no te escucha, así no se
+        confunde con su propio sonido. Usa audífonos si puedes.</p>
+    </div>
+
+    <div class="pane hidden" id="pane-progreso">
+      <div id="pList"></div>
+      <div class="btnrow"><button id="pReset">🗑 Borrar mi progreso</button></div>
+    </div>
+  </section>
+  </div>
+</main>
 
   <script src="js/layout.js"></script>
   <script src="js/music.js"></script>
   <script src="js/audio.js"></script>
+  <script src="js/staff.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/solfeo.js"></script>
   <script src="js/install.js"></script>
 </body>
 </html>
