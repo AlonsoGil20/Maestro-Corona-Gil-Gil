@@ -89,8 +89,10 @@
     <nav class="tabs">
       <button data-tab="circles" class="active">Círculos armónicos</button>
       <button data-tab="scales">Escalas</button>
+      <button data-tab="chords">Acordes</button>
       <button data-tab="explore">Explorar</button>
       <button data-tab="solfeo">🎼 Solfeo</button>
+      <button data-tab="teoria">📚 Teoría</button>
     </nav>
 
     <section class="card tab" id="tab-circles">
@@ -124,7 +126,15 @@
           <select id="sOct"><option value="3">3 (grave)</option><option value="4" selected>4 (media)</option><option value="5">5 (aguda)</option></select>
         </label>
         <label>Extensión
-          <select id="sSpan"><option value="1" selected>1 octava</option><option value="2">2 octavas</option></select>
+          <select id="sSpan"><option value="1" selected>1 octava</option><option value="2">2 octavas</option><option value="todo">Todo el acordeón (graves y agudos)</option></select>
+        </label>
+        <label>Digitación
+          <select id="sFing">
+            <option value="ambos" selected>★ Sr. Maestro · abriendo y cerrando</option>
+            <option value="pull">★ Sr. Maestro · solo abriendo</option>
+            <option value="push">★ Sr. Maestro · solo cerrando</option>
+            <option value="calc">Calculada por la app</option>
+          </select>
         </label>
       </div>
       <div class="toolbar">
@@ -139,6 +149,17 @@
       <div id="steps" class="steps"></div>
     </section>
 
+    <section class="card tab hidden" id="tab-chords">
+      <div class="toolbar">
+        <label>Tipo de acorde <select id="aType"></select></label>
+        <label>Fundamental <select id="aRoot"></select></label>
+        <button id="aPlay" class="primary">🔊 Escuchar</button>
+      </div>
+      <div id="aRoots" class="chips"></div>
+      <div id="aInfo" class="chord-info"></div>
+      <div class="staff-wrap"><svg id="aStaff" class="staff"></svg></div>
+    </section>
+
     <section class="card tab hidden" id="tab-explore">
       <div class="toolbar">
         <div class="seg" id="dirSeg">
@@ -151,6 +172,14 @@
       <p class="muted">Toca cualquier pito o bajo para escucharlo en la dirección elegida.
         Barra espaciadora: cambiar dirección del fuelle.</p>
       <div id="exploreInfo" class="summary"></div>
+  </section>
+
+  <section class="card tab hidden" id="tab-teoria">
+    <div class="teoria">
+      <label class="t-select">Lección <select id="tSelect"></select></label>
+      <details class="t-indexbox"><summary>📖 Índice del libro y progreso</summary><nav class="t-index" id="tIndex"></nav></details>
+      <article id="tLesson" class="t-lesson"></article>
+    </div>
   </section>
 
   <section class="card tab hidden" id="tab-solfeo">
@@ -324,9 +353,12 @@
   <script src="js/layout.js"></script>
   <script src="js/music.js"></script>
   <script src="js/audio.js"></script>
+  <script src="js/referencia.js"></script>
   <script src="js/staff.js"></script>
   <script src="js/app.js"></script>
   <script src="js/solfeo.js"></script>
+  <script src="js/teoria-libro.js"></script>
+  <script src="js/teoria.js"></script>
   <script src="js/install.js"></script>
 </body>
 </html>

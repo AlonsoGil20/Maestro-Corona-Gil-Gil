@@ -48,6 +48,7 @@ const Music = (() => {
     armonica:  { name: 'Menor armónica', mode: 'min', steps: [0, 2, 3, 5, 7, 8, 11] },
     melodica:  { name: 'Menor melódica', mode: 'min', steps: [0, 2, 3, 5, 7, 9, 11], desc: [0, 2, 3, 5, 7, 8, 10] },
     cromatica: { name: 'Cromática',      mode: 'maj', chromatic: true },
+    tonosEnteros: { name: 'Tonos enteros (hexátona, no es la escala mayor)', mode: 'maj', steps: [0, 2, 4, 6, 8, 10], wholeTone: true },
   };
 
   // stack = grados de escala que se suman a cada nota (7 = octava, 9 = décima, en escalas de 7 notas);
@@ -62,11 +63,22 @@ const Music = (() => {
     arpegios: { name: 'Arpegios (1-3-5-8)', stack: [2, 4, 7], semis: [4, 7, 12], arp: true },
   };
 
-  // iv = intervalos, lt = saltos de letra, optional = índices que se pueden omitir
+  // iv = intervalos, lt = saltos de letra, optional = índices que se pueden omitir,
+  // ref = cifrado en los datos del Sr. Maestro (js/referencia.js), minor = se escribe como tonalidad menor.
+  // El orden es el del Sr. Maestro (11 tipos).
+  const T3 = [0, 2, 4], T4 = [0, 2, 4, 6];
   const CHORDS = {
-    maj:  { iv: [0, 4, 7],     lt: [0, 2, 4],    suffix: '',  optional: [] },
-    min:  { iv: [0, 3, 7],     lt: [0, 2, 4],    suffix: 'm', optional: [] },
-    dom7: { iv: [0, 4, 7, 10], lt: [0, 2, 4, 6], suffix: '7', optional: [2] },
+    maj:    { name: 'Mayor', iv: [0, 4, 7], lt: T3, suffix: '', optional: [], ref: 'M' },
+    min:    { name: 'Menor', iv: [0, 3, 7], lt: T3, suffix: 'm', optional: [], ref: 'm', minor: true },
+    dim:    { name: 'Disminuido', iv: [0, 3, 6], lt: T3, suffix: 'dim', optional: [], ref: 'dim', minor: true },
+    aug:    { name: 'Aumentado', iv: [0, 4, 8], lt: T3, suffix: 'aug', optional: [], ref: 'aug' },
+    dom7:   { name: 'Séptima de dominante', iv: [0, 4, 7, 10], lt: T4, suffix: '7', optional: [2], ref: '7' },
+    maj7:   { name: 'Séptima mayor', iv: [0, 4, 7, 11], lt: T4, suffix: 'maj7', optional: [2], ref: 'maj7' },
+    m7:     { name: 'Séptima menor', iv: [0, 3, 7, 10], lt: T4, suffix: 'm7', optional: [2], ref: 'm7', minor: true },
+    dim7:   { name: 'Séptima disminuida', iv: [0, 3, 6, 9], lt: T4, suffix: 'dim7', optional: [], ref: 'dim7', minor: true },
+    m7b5:   { name: 'Séptima de sensible (semidisminuido)', iv: [0, 3, 6, 10], lt: T4, suffix: 'm7♭5', optional: [], ref: 'm7b5', minor: true },
+    dom7s5: { name: 'Séptima de dominante con 5ª aumentada', iv: [0, 4, 8, 10], lt: T4, suffix: '7♯5', optional: [], ref: '7#5' },
+    dom7b5: { name: 'Séptima de dominante con 5ª disminuida', iv: [0, 4, 6, 10], lt: T4, suffix: '7♭5', optional: [], ref: '7b5' },
   };
 
   const DEGREES = {
@@ -82,10 +94,11 @@ const Music = (() => {
   };
 
   const CIRCLES = {
+    // ref = progresión con botones del Sr. Maestro (js/referencia.js); sin ref, la posición se calcula
     maj: [
-      { name: 'Básico (I – IV – V7)', degrees: ['I', 'IV', 'V7'] },
-      { name: 'Con relativa (I – vi – IV – V7)', degrees: ['I', 'vi', 'IV', 'V7'] },
-      { name: 'Completo (I – vi – ii – V7)', degrees: ['I', 'vi', 'ii', 'V7'] },
+      { name: 'Triadas (I – IV – V)', degrees: ['I', 'IV', 'V'], ref: 'triadas' },
+      { name: 'Círculo armónico (I – vi – ii – V7)', degrees: ['I', 'vi', 'ii', 'V7'], ref: 'armonico' },
+      { name: 'Círculo melódico (I – vi – IV – V7)', degrees: ['I', 'vi', 'IV', 'V7'], ref: 'melodico' },
       { name: 'Con séptima (I – I7 – IV – V7)', degrees: ['I', 'I7', 'IV', 'V7'] },
     ],
     min: [

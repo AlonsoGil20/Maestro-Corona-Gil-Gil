@@ -1,15 +1,18 @@
 /* Service worker: guarda la app para que funcione sin internet.
    Con internet siempre trae la versión más nueva (así nunca se mezclan archivos viejos y nuevos);
    sin internet usa lo guardado. Sube VERSION al publicar cambios. */
-const VERSION = 'maestro-corona-v7';
+const VERSION = 'maestro-corona-v13';
 const FILES = [
   './',
   './index.html',
   './manifest.webmanifest',
   './css/styles.css',
   './js/layout.js',
+  './js/referencia.js',
   './js/staff.js',
   './js/solfeo.js',
+  './js/teoria-libro.js',
+  './js/teoria.js',
   './js/music.js',
   './js/audio.js',
   './js/app.js',

@@ -3,33 +3,36 @@
  * Afinación de referencia: Sol - Do - Fa (GCF). Las notas son números MIDI (60 = Do4).
  * Las demás afinaciones se obtienen transponiendo esta distribución.
  *
- * Si tu acordeón tiene alguna nota distinta (p. ej. pitos alterados), ajusta estos valores:
- * cada posición del arreglo es un pito, del 1 (arriba, cerca de la barbilla) al último.
+ * Fuentes: pitos = Sr. Maestro 2.0.1 (SenorMaestro-Referencia), confirmados con el diagrama oficial
+ * de Hohner «Diatonic keyboard GCF, 31 buttons» y la tarjeta GCF del usuario. Bajos = diagrama de Hohner
+ * y la misma tarjeta. Cada posición del arreglo es un pito, del 1 (arriba, el de las alteraciones) al último.
  */
 const BASE_LAYOUT = {
   treble: [
     { name: '1ª hilera', place: 'afuera', keyPc: 7,
-      push: [55, 59, 62, 67, 71, 74, 79, 83, 86, 91],
-      pull: [57, 62, 66, 69, 72, 76, 78, 81, 84, 88] },
+      push: [61, 55, 59, 62, 67, 71, 74, 79, 83, 86],
+      pull: [63, 57, 60, 64, 66, 69, 72, 76, 78, 81] },
     { name: '2ª hilera', place: 'medio', keyPc: 0,
-      push: [55, 60, 64, 67, 72, 76, 79, 84, 88, 91, 96],
-      pull: [59, 62, 67, 71, 74, 77, 81, 83, 86, 89, 93] },
+      push: [66, 55, 60, 64, 67, 72, 76, 79, 84, 88, 91],
+      pull: [68, 59, 62, 65, 69, 71, 74, 77, 81, 83, 86] },
     { name: '3ª hilera', place: 'adentro', keyPc: 5,
-      push: [53, 57, 60, 65, 69, 72, 77, 81, 84, 89],
-      pull: [55, 60, 64, 67, 70, 74, 76, 79, 82, 86] },
+      push: [75, 60, 65, 69, 72, 77, 81, 84, 89, 93],
+      pull: [73, 64, 67, 70, 74, 76, 79, 82, 86, 88] },
   ],
-  // Bajos: 2 filas de 6. 'bass' = nota fundamental, 'chord' = acorde mayor.
-  // push/pull = clase de nota (0 = Do ... 11 = Si) cerrando / abriendo.
+  // Bajos: 2 filas de 6, de arriba (hacia la barbilla) a abajo (hacia la rodilla). En cada pareja el de
+  // arriba es el acorde (minúscula en los diagramas de Hohner) y el de abajo el bajo (mayúscula).
+  // 'bass' = nota sola, 'chord' = acorde. push/pull = clase de nota (0 = Do … 11 = Si) cerrando / abriendo;
+  // pushQ/pullQ = calidad del acorde ('maj' mayor, 'min' menor).
   bass: [
-    { name: 'Interna', buttons: [
-      { type: 'bass', push: 7, pull: 2 }, { type: 'chord', push: 7, pull: 2 },
-      { type: 'bass', push: 0, pull: 7 }, { type: 'chord', push: 0, pull: 7 },
-      { type: 'bass', push: 5, pull: 0 }, { type: 'chord', push: 5, pull: 0 },
+    { name: 'Interna', buttons: [  // junto al fuelle
+      { type: 'chord', push: 4, pull: 9, pushQ: 'maj', pullQ: 'min' },   { type: 'bass', push: 4, pull: 9 },
+      { type: 'chord', push: 9, pull: 2, pushQ: 'maj', pullQ: 'min' },   { type: 'bass', push: 9, pull: 2 },
+      { type: 'chord', push: 10, pull: 10, pushQ: 'maj', pullQ: 'maj' }, { type: 'bass', push: 10, pull: 10 },
     ] },
     { name: 'Externa', buttons: [
-      { type: 'bass', push: 4, pull: 9 }, { type: 'chord', push: 4, pull: 9 },
-      { type: 'bass', push: 9, pull: 2 }, { type: 'chord', push: 9, pull: 2 },
-      { type: 'bass', push: 10, pull: 5 }, { type: 'chord', push: 10, pull: 5 },
+      { type: 'chord', push: 7, pull: 2, pushQ: 'maj', pullQ: 'maj' }, { type: 'bass', push: 7, pull: 2 },
+      { type: 'chord', push: 0, pull: 7, pushQ: 'maj', pullQ: 'maj' }, { type: 'bass', push: 0, pull: 7 },
+      { type: 'chord', push: 5, pull: 0, pushQ: 'maj', pullQ: 'maj' }, { type: 'bass', push: 5, pull: 0 },
     ] },
   ],
 };

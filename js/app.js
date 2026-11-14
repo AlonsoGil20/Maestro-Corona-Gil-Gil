@@ -16,11 +16,11 @@ const App = { hooks: {} };
     hl: new Map(), bhl: new Map(), timer: null,
     circle: null, selChord: 0, scale: null, selStep: -1,
   };
-let L;
-const store = {
-  get: k => { try { return localStorage.getItem(k); } catch { return null; } },
-  set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } },
-};
+  let L;
+  const store = {
+    get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+    set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } },
+  };
 
   /* ---------------- Distribución actual ---------------- */
   function buildLayout() {
@@ -33,7 +33,7 @@ const store = {
     const bass = [];
     BASE_LAYOUT.bass.forEach((row, r) => row.buttons.forEach((b, i) => bass.push({
       id: `b${r}-${i}`, row: r, idx: i, type: b.type, x: i, y: r,
-      push: Music.pc(b.push + off), pull: Music.pc(b.pull + off),
+      push: Music.pc(b.push + off), pull: Music.pc(b.pull + off), pushQ: b.pushQ, pullQ: b.pullQ,
     })));
     L = {
       treble, bass,
@@ -49,7 +49,9 @@ const store = {
   const refAny = b => (isBassBtn(b) ? `${b.row === 0 ? 'Int' : 'Ext'}·${b.idx + 1}` : ref(b));
   const hlMap = b => (isBassBtn(b) ? S.bhl : S.hl);
   const bassMidi = p => 40 + ((p - 4 + 12) % 12);
-  const bassChordMidis = p => { const r = 52 + ((p - 4 + 12) % 12); return [r, r + 4, r + 7]; };
+  // q = 'min' para los acordes menores de los bajos (La menor y Re menor abriendo en Sol-Do-Fa)
+  const bassChordMidis = (p, q) => { const r = 52 + ((p - 4 + 12) % 12); return [r, r + (q === 'min' ? 3 : 4), r + 7]; };
+  const bassName = (b, d) => Music.name(b[d], S.tuning.pref) + (b.type === 'chord' && b[d + 'Q'] === 'min' ? 'm' : '');
 
   /* ---------------- Resaltado ---------------- */
   function addHl(map, id, dir, badge) {
@@ -126,7 +128,7 @@ const store = {
       h += `<text class="rowlbl" x="${colX(r)}" y="30">${row.name}</text>`;
     });
     L.bass.forEach(b => {
-      h += keySVG(b, colX(b.row), y0 + b.idx * gap, R, d => Music.name(b[d], S.tuning.pref),
+      h += keySVG(b, colX(b.row), y0 + b.idx * gap, R, d => bassName(b, d),
         S.bhl.get(b.id), b.type === 'chord');
     });
     const svg = $('#bass');
@@ -194,26 +196,36 @@ const store = {
   }
 
   function findBass(rootPc, quality, dir) {
-    const pick = (type, d) => L.bass.find(b => b.type === type && b[d] === rootPc);
+    // Los acordes de séptima se acompañan con el botón de acorde mayor
+    const want = quality === 'min' ? 'min' : 'maj';
+    const pick = (type, d) => L.bass.find(b => b.type === type && b[d] === rootPc && (type === 'bass' || b[d + 'Q'] === want));
     const res = { bass: null, chord: null, warn: [], note: '' };
     for (const [key, type] of [['bass', 'bass'], ['chord', 'chord']]) {
-      if (type === 'chord' && quality === 'min') continue;
+      const what = type === 'bass' ? 'bajo' : `acorde ${want === 'min' ? 'menor' : 'mayor'} de bajo`;
       let b = pick(type, dir), d = dir;
       if (!b) {
         b = pick(type, other(dir)); d = other(dir);
-        if (b) res.warn.push(`El ${type === 'bass' ? 'bajo' : 'acorde de bajo'} solo existe ${DIRS[d].label.toLowerCase()} (dirección contraria a los pitos).`);
-        else res.warn.push(`Este ${type === 'bass' ? 'bajo' : 'acorde de bajo'} no existe en el acordeón.`);
+        if (b) res.warn.push(`El ${what} solo existe ${DIRS[d].label.toLowerCase()} (dirección contraria a los pitos).`);
+        else res.warn.push(`Este ${what} no existe en el acordeón${type === 'chord' ? ': se toca solo el bajo' : ''}.`);
       }
       if (b) res[key] = { btn: b, dir: d };
     }
-    if (quality === 'min') res.note = 'Acorde menor: en los bajos se toca la nota fundamental (los botones de acorde son mayores).';
     return res;
   }
 
-  function circleChords(keyPc, mode, degrees) {
+  // Botones del Sr. Maestro para un círculo y tonalidad. Son los mismos botones en todos los tonos del
+  // acordeón: se busca la tonalidad equivalente en Sol-Do-Fa.
+  function refSteps(refKey, keyPc) {
+    const table = refKey && REFERENCIA.progresiones[refKey];
+    return table ? table[Music.pc(keyPc - S.tuning.offset)] || null : null;
+  }
+  const refButton = ([fila, boton]) => L.treble.find(b => b.row === fila - 1 && b.idx === boton - 1);
+
+  function circleChords(keyPc, mode, degrees, refKey) {
+    const refs = refSteps(refKey, keyPc);
     const steps = Music.SCALES[mode === 'maj' ? 'mayor' : 'menor'].steps;
     const rootLetter = Music.letterOf(keyPc, Music.rootPref(keyPc, mode));
-    return degrees.map(deg => {
+    return degrees.map((deg, i) => {
       const d = Music.DEGREES[mode][deg];
       const q = Music.CHORDS[d.q];
       const rootPc = Music.pc(keyPc + steps[d.deg]);
@@ -221,7 +233,16 @@ const store = {
       const tones = q.iv.map((iv, k) => ({
         pc: Music.pc(rootPc + iv), name: Music.spell((letter + q.lt[k]) % 7, rootPc + iv), letter: (letter + q.lt[k]) % 7,
       }));
-      const voicings = findVoicings(tones, q.optional);
+      let voicings = findVoicings(tones, q.optional).map(v => ({ ...v, ref: false }));
+      const r = refs && refs[i] && refs[i][0] === deg ? refs[i][1] : null;
+      if (r) {
+        const buttons = r.map(refButton), dir = r[0][2];
+        // La teoría manda: solo se usa si suena exactamente el acorde
+        const pcs = new Set(buttons.map(b => Music.pc(b[dir])));
+        const req = tones.filter((_, k) => !q.optional.includes(k)).map(t => t.pc);
+        if (r.every(n => n[2] === dir) && req.every(p => pcs.has(p)) && [...pcs].every(p => tones.some(t => t.pc === p)))
+          voicings = [{ dir, buttons, cost: 0, ref: true }, ...voicings.filter(v => v.dir !== dir)];
+      }
       return {
         deg, rootPc, quality: d.q, tones, voicings, alt: 0,
         name: Music.spell(letter, rootPc) + q.suffix,
@@ -247,7 +268,8 @@ const store = {
       for (let p = 0; p < 12; p++) if (!natural.includes(`${p}:${mode}`)) others.push(`${p}:${mode}`);
     const label = v => {
       const [p, mode] = v.split(':');
-      const ok = circleChords(+p, mode, Music.CIRCLES[mode][0].degrees).every(c => c.voicings.length);
+      const c0 = Music.CIRCLES[mode][0];
+      const ok = circleChords(+p, mode, c0.degrees, c0.ref).every(c => c.voicings.length);
       return Music.keyName(+p, mode) + (ok ? '' : ' (incompleto)');
     };
     sel.innerHTML = `<optgroup label="Tonos naturales del acordeón">${natural.map(v => `<option value="${v}">${label(v)}</option>`).join('')}</optgroup>
@@ -268,7 +290,7 @@ const store = {
     stop();
     const [p, mode] = $('#cKey').value.split(':');
     const circle = Music.CIRCLES[mode][+$('#cType').value];
-    S.circle = { keyPc: +p, mode, def: circle, chords: circleChords(+p, mode, circle.degrees) };
+    S.circle = { keyPc: +p, mode, def: circle, chords: circleChords(+p, mode, circle.degrees, circle.ref) };
     selectChord(Math.min(S.selChord, S.circle.chords.length - 1), false);
   }
 
@@ -297,21 +319,21 @@ const store = {
     renderCircleStaff();
   }
 
-function renderCircleStaff() {
-  const events = S.circle.chords.map(ch => {
-    const v = chordVoicing(ch);
-    const letterOfPc = p => (ch.tones.find(t => t.pc === Music.pc(p)) || {}).letter;
-    return {
-      notes: {
-        treble: v ? v.buttons.map(b => ({ midi: b[v.dir], letter: letterOfPc(b[v.dir]) })) : [],
-        bass: [{ midi: bassMidi(ch.rootPc), letter: ch.tones[0].letter }],
-      },
-      cls: v ? v.dir : 'na',
-      lines: [{ t: ch.name, cls: 'b' }, ch.deg, { t: v ? DIRS[v.dir].arrow : '✕', cls: v ? v.dir : '' }],
-    };
-  });
-  Staff.render($('#cStaff'), { staves: ['treble', 'bass'], events, colW: 74, cur: S.selChord });
-}
+  function renderCircleStaff() {
+    const events = S.circle.chords.map(ch => {
+      const v = chordVoicing(ch);
+      const letterOfPc = p => (ch.tones.find(t => t.pc === Music.pc(p)) || {}).letter;
+      return {
+        notes: {
+          treble: v ? v.buttons.map(b => ({ midi: b[v.dir], letter: letterOfPc(b[v.dir]) })) : [],
+          bass: [{ midi: bassMidi(ch.rootPc), letter: ch.tones[0].letter }],
+        },
+        cls: v ? v.dir : 'na',
+        lines: [{ t: ch.name, cls: 'b' }, ch.deg, { t: v ? DIRS[v.dir].arrow : '✕', cls: v ? v.dir : '' }],
+      };
+    });
+    Staff.render($('#cStaff'), { staves: ['treble', 'bass'], events, colW: 74, cur: S.selChord });
+  }
 
   function renderChordInfo() {
     const ch = S.circle.chords[S.selChord];
@@ -322,6 +344,7 @@ function renderCircleStaff() {
     if (v) {
       const btns = [...v.buttons].sort((a, b) => a[v.dir] - b[v.dir]);
       h += `<div class="dirbadge ${v.dir}">${DIRS[v.dir].arrow} ${DIRS[v.dir].long}</div>
+        <div class="note">${v.ref ? '★ Posición del Sr. Maestro' : 'Posición calculada por la app (el Sr. Maestro no trae este acorde)'}</div>
         <div class="sub">Pitos · mano derecha</div>
         <ul>${btns.map(b => `<li><b>${ref(b)}</b> — ${BASE_LAYOUT.treble[b.row].name}, pito ${b.idx + 1}: ${nnOct(b[v.dir])}</li>`).join('')}</ul>`;
       if (v.buttons.length < ch.tones.length) h += `<div class="note">Se omite la quinta (común en acordes de séptima).</div>`;
@@ -330,10 +353,10 @@ function renderCircleStaff() {
     }
     h += `<div class="sub">Bajos · mano izquierda</div><ul>`;
     if (bass.bass) h += `<li><b>Bajo</b> ${Music.name(ch.rootPc, S.tuning.pref)} — ${DIRS[bass.bass.dir].label.toLowerCase()} (fila ${BASE_LAYOUT.bass[bass.bass.btn.row].name.toLowerCase()})</li>`;
-    if (bass.chord) h += `<li><b>Acorde</b> ${Music.name(ch.rootPc, S.tuning.pref)} — ${DIRS[bass.chord.dir].label.toLowerCase()} (fila ${BASE_LAYOUT.bass[bass.chord.btn.row].name.toLowerCase()})</li>`;
-    h += `</ul>${bass.warn.map(w => `<div class="warn">⚠ ${w}</div>`).join('')}${bass.note ? `<div class="note">${bass.note}</div>` : ''}
+    if (bass.chord) h += `<li><b>Acorde</b> ${bassName(bass.chord.btn, bass.chord.dir)} — ${DIRS[bass.chord.dir].label.toLowerCase()} (fila ${BASE_LAYOUT.bass[bass.chord.btn.row].name.toLowerCase()})</li>`;
+    h += `</ul>${bass.warn.map(w => `<div class="warn">⚠ ${w}</div>`).join('')}
       <div class="btnrow"><button id="chordPlay">🔊 Escuchar acorde</button>
-      ${ch.voicings.length > 1 ? `<button id="chordAlt">Ver posición ${DIRS[ch.voicings[1 - ch.alt].dir].label.toLowerCase()}</button>` : ''}</div>`;
+      ${ch.voicings.length > 1 ? `<button id="chordAlt">Ver posición ${ch.voicings[1 - ch.alt].ref ? 'del Sr. Maestro' : 'calculada'} ${DIRS[ch.voicings[1 - ch.alt].dir].label.toLowerCase()}</button>` : ''}</div>`;
     $('#chordInfo').innerHTML = h;
     $('#chordPlay').onclick = () => playChord(ch);
     if ($('#chordAlt')) $('#chordAlt').onclick = () => { ch.alt = 1 - ch.alt; selectChord(S.selChord, true); };
@@ -364,7 +387,7 @@ function renderCircleStaff() {
     if (v) Sound.treble(v.buttons.map(b => b[v.dir]), (beatMs * 2) / 1000 - 0.08);
     const bass = chordBass(ch);
     if (bass.bass) Sound.bass(bassMidi(ch.rootPc), beatMs / 1000 * 0.7);
-    if (bass.chord) setTimeout(() => Sound.bassChord(bassChordMidis(ch.rootPc), beatMs / 1000 * 0.6), beatMs);
+    if (bass.chord) setTimeout(() => Sound.bassChord(bassChordMidis(ch.rootPc, bass.chord.btn[bass.chord.dir + 'Q']), beatMs / 1000 * 0.6), beatMs);
     else if (bass.bass) setTimeout(() => Sound.bass(bassMidi(ch.rootPc) + 7, beatMs / 1000 * 0.6), beatMs);
   }
 
@@ -442,25 +465,77 @@ function renderCircleStaff() {
     return res;
   }
 
+  // Digitación del Sr. Maestro: escalas mayores y menores naturales (notas sencillas, terceras y sextas),
+  // y en notas sencillas la cromática y las de tonos enteros (estas mezclan abriendo y cerrando).
+  // Devuelve una función que, dadas las notas de un paso, da el botón y el fuelle de la referencia, o null.
+  function refScale(sc, root, ivKey, hand, fing) {
+    if (fing === 'calc' || hand === 'bajos') return null;
+    const off = S.tuning.offset, E = REFERENCIA.escalas;
+    let pasos = null;
+    if (sc.chromatic || sc.wholeTone) {
+      if (ivKey === 'simple' && fing === 'ambos')
+        pasos = sc.chromatic ? E.cromatica : E.tonosEnteros[Music.pc(root - off) % 2 ? 'WT1' : 'WT0'];
+    } else {
+      const modo = sc === Music.SCALES.mayor ? 'mayor' : sc === Music.SCALES.menor ? 'menor' : null;
+      const tbl = modo && ['simple', 'terceras', 'sextas'].includes(ivKey) && E[modo][Music.pc(root - off)];
+      pasos = tbl && tbl[fing] && tbl[fing][ivKey];
+    }
+    if (!pasos) return null;
+    const key = ms => [...ms].sort((a, b) => a - b).join(',');
+    const map = new Map(pasos.map(p => [key(p.map(n => n[0] + off)), p]));
+    return midis => {
+      const p = map.get(key(midis));
+      if (!p || p.some(n => n[3] !== p[0][3])) return null;
+      const btns = midis.map(m => refButton(p.find(n => n[0] + off === m).slice(1)));
+      return { dir: p[0][3], btns, cx: avg(btns.map(b => b.x)), cy: avg(btns.map(b => b.y)), local: 0, ref: true };
+    };
+  }
+
   function computeScale() {
     stop();
     const root = +$('#sRoot').value, sc = Music.SCALES[$('#sType').value];
     const hand = $('#sHand').value;
     $('#sInt').disabled = hand === 'bajos';
-    const iv = Music.INTERVALS[hand === 'bajos' ? 'simple' : $('#sInt').value];
-    const span = +$('#sSpan').value;
+    // Las sextas no existen dentro de la escala de tonos enteros: se toca en notas sencillas
+    const ivKey = hand === 'bajos' || (sc.wholeTone && $('#sInt').value === 'sextas') ? 'simple' : $('#sInt').value;
+    const iv = Music.INTERVALS[ivKey];
+    // «todo» = desde la nota más grave hasta la más aguda que tenga el acordeón (en los bajos no aplica)
+    const whole = $('#sSpan').value === 'todo' && hand !== 'bajos';
+    const span = whole ? 1 : +$('#sSpan').value || 1;
+    $('#sOct').disabled = whole;
     const tonic = 12 * (+$('#sOct').value + 1) + root;
     const rl = Music.letterOf(root, Music.rootPref(root, sc.mode));
 
     const len = sc.chromatic ? 12 : sc.steps.length;
+    const w = d => ((d % len) + len) % len;  // grado dentro de la octava, también para grados negativos (más graves)
+    // Tonos enteros: 6 notas para 7 letras, así que una letra se salta. Se elige dónde saltarla para no tener
+    // dobles alteraciones, no mezclar sostenidos con bemoles y, si da igual, usar sostenidos (Do: Do Re Mi Fa# Sol# La#).
+    let wtLetters = null;
+    if (sc.wholeTone) {
+      let best = null;
+      for (let skip = 1; skip <= 6; skip++) {
+        const letters = sc.steps.map((_, i) => i + (i >= skip ? 1 : 0));
+        const accs = letters.map((l, i) => Music.pc(root + sc.steps[i] - [0, 2, 4, 5, 7, 9, 11][(rl + l) % 7] + 6) - 6);
+        if (accs.some(a => Math.abs(a) > 1)) continue;
+        const sharps = accs.filter(a => a > 0).length, flats = accs.filter(a => a < 0).length;
+        const score = sharps + flats + (sharps && flats ? 2 : 0) + flats * 0.25;
+        if (!best || score < best.score) best = { score, letters };
+      }
+      wtLetters = best.letters;
+    }
     const note = (d, desc) => {
       if (sc.chromatic) {
         const m = tonic + d, l = Music.letterOf(m, desc ? 'flat' : 'sharp');
         return { midi: m, name: Music.spell(l, m), letter: l };
       }
       const steps = desc && sc.desc ? sc.desc : sc.steps;
-      const m = tonic + 12 * Math.floor(d / len) + steps[d % len];
-      const letter = sc.letters ? sc.letters[d % len] : d % len;
+      const m = tonic + 12 * Math.floor(d / len) + steps[w(d)];
+      // Tonos enteros: las mismas 6 notas al subir y al bajar, con la escritura más limpia (ver wtLetters)
+      if (sc.wholeTone) {
+        const l = (rl + wtLetters[w(d)]) % 7;
+        return { midi: m, name: Music.spell(l, m), letter: l };
+      }
+      const letter = sc.letters ? sc.letters[w(d)] : w(d);
       return { midi: m, name: Music.spell((rl + letter) % 7, m), letter: (rl + letter) % 7 };
     };
     // Los saltos de octava (7) y décima (9) se adaptan a escalas de 5 notas
@@ -473,23 +548,40 @@ function renderCircleStaff() {
         : note(d + degJump(k), desc));
       return [lower, ...upper];
     };
+    // Grados que se tocan: de dLo a dHi. Con «todo el acordeón», del primer grado cuyas notas existen en los
+    // pitos (el más grave) al último (el más agudo), subiendo y bajando.
+    let dLo = 0, dHi = iv.arp ? N - 1 : N;
+    if (whole) {
+      const exists = m => L.treble.some(b => b.push === m || b.pull === m);
+      const fits = d => chord(d, false).every(n => exists(n.midi)) && chord(d, true).every(n => exists(n.midi));
+      const range = [];
+      for (let d = -4 * len; d <= 5 * len; d++) if (fits(d)) range.push(d);
+      if (range.length) { dLo = range[0]; dHi = range[range.length - 1]; }
+    }
     const steps = [];
-    let ascLen = N + 1;
+    let ascLen = dHi - dLo + 1;
     if (iv.arp) {
       // Arpegio de cada grado: sube 1-3-5-8 y al regresar baja 8-5-3-1
-      for (let d = 0; d < N; d++)
+      for (let d = dLo; d <= dHi; d++)
         chord(d, false).forEach((n, j) => steps.push({ notes: [n], desc: false, group: j === 0 }));
       ascLen = steps.length;
-      for (let d = N - 1; d >= 0; d--)
+      for (let d = dHi; d >= dLo; d--)
         chord(d, true).reverse().forEach((n, j) => steps.push({ notes: [n], desc: true, group: j === 0 }));
     } else {
-      for (let d = 0; d <= N; d++) steps.push({ notes: chord(d, false), desc: false });
-      for (let d = N - 1; d >= 0; d--) steps.push({ notes: chord(d, true), desc: true });
+      for (let d = dLo; d <= dHi; d++) steps.push({ notes: chord(d, false), desc: false });
+      for (let d = dHi - 1; d >= dLo; d--) steps.push({ notes: chord(d, true), desc: true });
     }
 
-    const plan = planFingering(steps.map(s => hand === 'bajos'
-      ? bassOptionsFor(s.notes[0].midi)
-      : optionsFor(s.notes.map(n => n.midi))));
+    const fing = $('#sFing').value;  // 'ambos' | 'pull' | 'push' = Sr. Maestro · 'calc' = calculada
+    const refOpt = refScale(sc, root, ivKey, hand, fing);
+    const plan = planFingering(steps.map(s => {
+      if (hand === 'bajos') return bassOptionsFor(s.notes[0].midi);
+      const midis = s.notes.map(n => n.midi);
+      const r = refOpt && refOpt(midis);
+      if (r) return [r];
+      const opts = optionsFor(midis);
+      return fing === 'push' || fing === 'pull' ? opts.filter(o => o.dir === fing) : opts;
+    }));
     let prevBass = null;
     steps.forEach((s, k) => {
       s.opt = plan[k];
@@ -509,7 +601,8 @@ function renderCircleStaff() {
         if (btn) { s.bass = { btn, dir: s.opt.dir }; prevBass = btn; }
       }
     });
-    S.scale = { steps, ascLen, name: `${sc.name} de ${Music.spell(rl, root)}`, iv, hand };
+    S.scale = { steps, ascLen, name: `${sc.name} de ${Music.spell(rl, root)}`, iv, hand, hasRef: !!refOpt, fing,
+      noSixths: sc.wholeTone && $('#sInt').value === 'sextas' };
     S.selStep = -1;
     renderSteps();
     renderScaleStaff();
@@ -517,7 +610,7 @@ function renderCircleStaff() {
   }
 
   function renderSteps() {
-    const { steps, ascLen, name, iv, hand } = S.scale;
+    const { steps, ascLen, name, iv, hand, hasRef, fing, noSixths } = S.scale;
     const ok = steps.filter(s => s.opt);
     let changes = 0;
     for (let k = 1; k < steps.length; k++)
@@ -535,6 +628,13 @@ function renderCircleStaff() {
       extra = `<div class="note">El bajo acompaña la nota más grave de cada paso, en la misma dirección del fuelle que los pitos.
         ${noBass ? `${noBass} pasos no tienen bajo en esa dirección.` : 'Todos los pasos tienen bajo.'}</div>`;
     }
+    if (noSixths) extra += '<div class="warn">La escala de tonos enteros no tiene sextas: se muestra en notas sencillas.</div>';
+    if (hand !== 'bajos') {
+      const nRef = steps.filter(s => s.opt && s.opt.ref).length;
+      extra += fing === 'calc' ? '<div class="note">Digitación calculada por la app.</div>'
+        : hasRef ? `<div class="note">★ ${nRef} de ${steps.length} pasos con la digitación del Sr. Maestro${nRef < steps.length ? '; los demás (fuera de su rango de octavas) son calculados' : ''}.</div>`
+        : '<div class="note">El Sr. Maestro no trae esta escala: digitación calculada por la app.</div>';
+    }
     const what = hand === 'bajos' ? 'en los bajos' : iv.name.toLowerCase() + (hand === 'ambas' ? ' + bajos' : '');
     $('#scaleSummary').innerHTML = `<b>${name}</b> · ${what} · ${ok.length} de ${steps.length} pasos tocables · ${changes} cambios de fuelle
       ${missing.length ? `<div class="warn">⚠ ${missing.slice(0, 4).join(' · ')}</div>` : ''}${extra}`;
@@ -544,30 +644,30 @@ function renderCircleStaff() {
       return `<button class="step ${o ? o.dir : 'na'} ${k === S.selStep ? 'active' : ''} ${k === ascLen ? 'sep' : s.group && k ? 'gs' : ''}" data-i="${k}" title="${o ? DIRS[o.dir].long : s.why}">
         <span class="num">${k + 1}${k === ascLen ? ' ↓' : ''}</span><span class="nn">${names}</span>
         <span class="dir">${o ? DIRS[o.dir].arrow : '✕'}</span>
-        <span class="refs">${o ? o.btns.map(refAny).join(' ') : 'no disponible'}</span>
+        <span class="refs">${o ? (o.ref ? '★ ' : '') + o.btns.map(refAny).join(' ') : 'no disponible'}</span>
         ${hand === 'ambas' && o ? `<span class="refs">${s.bass ? 'B ' + refAny(s.bass.btn) : 'sin bajo'}</span>` : ''}</button>`;
     }).join('');
   }
 
-function renderScaleStaff() {
-  const { steps, hand } = S.scale;
-  const bassNote = s => ({ midi: bassMidi(Music.pc(s.notes[0].midi)), letter: s.notes[0].letter });
-  const events = steps.map(s => {
-    const o = s.opt;
-    const lines = [...s.notes].reverse().map(n => ({ t: n.name, cls: 'b' }));
-    lines.push({ t: o ? DIRS[o.dir].arrow : '✕', cls: o ? o.dir : '' });
-    if (o && o.btns.length === 1) lines.push(refAny(o.btns[0]));
-    return {
-      notes: {
-        treble: hand === 'bajos' ? [] : s.notes,
-        bass: hand === 'bajos' ? [bassNote(s)] : s.bass ? [bassNote(s)] : [],
-      },
-      cls: o ? o.dir : 'na', lines,
-    };
-  });
-  const staves = hand === 'bajos' ? ['bass'] : hand === 'ambas' ? ['treble', 'bass'] : ['treble'];
-  Staff.render($('#sStaff'), { staves, events, colW: S.scale.iv.stack.length > 1 && hand !== 'bajos' ? 52 : 46 });
-}
+  function renderScaleStaff() {
+    const { steps, hand } = S.scale;
+    const bassNote = s => ({ midi: bassMidi(Music.pc(s.notes[0].midi)), letter: s.notes[0].letter });
+    const events = steps.map(s => {
+      const o = s.opt;
+      const lines = [...s.notes].reverse().map(n => ({ t: n.name, cls: 'b' }));
+      lines.push({ t: o ? DIRS[o.dir].arrow : '✕', cls: o ? o.dir : '' });
+      if (o && o.btns.length === 1) lines.push(refAny(o.btns[0]));
+      return {
+        notes: {
+          treble: hand === 'bajos' ? [] : s.notes,
+          bass: hand === 'bajos' ? [bassNote(s)] : s.bass ? [bassNote(s)] : [],
+        },
+        cls: o ? o.dir : 'na', lines,
+      };
+    });
+    const staves = hand === 'bajos' ? ['bass'] : hand === 'ambas' ? ['treble', 'bass'] : ['treble'];
+    Staff.render($('#sStaff'), { staves, events, colW: S.scale.iv.stack.length > 1 && hand !== 'bajos' ? 52 : 46 });
+  }
 
   function showWholePath() {
     clearHl();
@@ -624,6 +724,117 @@ function renderScaleStaff() {
     if (App.hooks.stop) App.hooks.stop();
   }
 
+  /* ---------------- Pestaña: acordes ---------------- */
+  const chordRootName = (p, q) => Music.spell(Music.letterOf(p, Music.rootPref(p, q.minor ? 'min' : 'maj')), p);
+
+  // Un acorde cualquiera (11 tipos del Sr. Maestro): sus notas y posiciones, primero la del Sr. Maestro.
+  function chordFor(rootPc, type) {
+    const q = Music.CHORDS[type];
+    const letter = Music.letterOf(rootPc, Music.rootPref(rootPc, q.minor ? 'min' : 'maj'));
+    const tones = q.iv.map((iv, k) => ({
+      pc: Music.pc(rootPc + iv), name: Music.spell((letter + q.lt[k]) % 7, rootPc + iv), letter: (letter + q.lt[k]) % 7,
+    }));
+    let voicings = findVoicings(tones, q.optional).map(v => ({ ...v, ref: false }));
+    const table = REFERENCIA.acordes[q.ref] || {};
+    const r = table[Music.pc(rootPc - S.tuning.offset)];
+    if (r) {
+      const buttons = r.map(refButton), dir = r[0][2];
+      const pcs = new Set(buttons.map(b => Music.pc(b[dir])));
+      if (r.every(n => n[2] === dir) && pcs.size === tones.length && tones.every(t => pcs.has(t.pc)))
+        voicings = [{ dir, buttons, cost: 0, ref: true }, ...voicings.filter(v => v.dir !== dir)];
+    }
+    // Si falta solo este de los 12, es porque el Sr. Maestro lo trae mal y se omitió (el Sol maj7)
+    const badRef = !r && Object.keys(table).length === 11;
+    return { rootPc, type, quality: type, tones, voicings, alt: 0, badRef, name: Music.spell(letter, rootPc) + q.suffix };
+  }
+
+  // Acompañamiento en los bajos: acorde menor para m y m7, mayor para mayor, 7 y maj7; los demás, solo el bajo
+  function chordTabBass(ch, dir) {
+    const kind = ['min', 'm7'].includes(ch.type) ? 'min' : ['maj', 'dom7', 'maj7'].includes(ch.type) ? 'maj' : null;
+    const bass = findBass(ch.rootPc, kind || 'maj', dir);
+    if (!kind) {
+      bass.chord = null;
+      bass.warn = bass.warn.filter(w => !w.includes('acorde'));
+    }
+    return bass;
+  }
+
+  function fillChordSelects() {
+    const type = $('#aType').value || 'maj', q = Music.CHORDS[type];
+    $('#aType').innerHTML = Object.entries(Music.CHORDS).map(([k, c]) => `<option value="${k}">${c.name}</option>`).join('');
+    $('#aType').value = type;
+    const r = $('#aRoot').value || '0';
+    $('#aRoot').innerHTML = Array.from({ length: 12 }, (_, p) => `<option value="${p}">${chordRootName(p, q)}</option>`).join('');
+    $('#aRoot').value = r;
+  }
+
+  function computeChordTab(sound) {
+    stop();
+    fillChordSelects();
+    const type = $('#aType').value, root = +$('#aRoot').value, q = Music.CHORDS[type];
+    S.chord = chordFor(root, type);
+    $('#aRoots').innerHTML = Array.from({ length: 12 }, (_, p) => {
+      const c = chordFor(p, type), v = c.voicings[0];
+      return `<button class="chip ${v ? v.dir : 'na'} ${p === root ? 'active' : ''}" data-p="${p}" title="${v ? DIRS[v.dir].long : 'Sin posición'}">
+        ${c.name}${v && v.ref ? ' ★' : ''}</button>`;
+    }).join('');
+    renderChordTab();
+    if (sound) playChordTab();
+  }
+
+  function renderChordTab() {
+    const ch = S.chord, v = chordVoicing(ch), q = Music.CHORDS[ch.type];
+    const bass = chordTabBass(ch, v ? v.dir : 'push');
+    let h = `<h3>${ch.name}<span class="deg">${q.name}</span></h3>
+      <div class="tones">${ch.tones.map(t => `<span class="tone">${t.name}</span>`).join('')}</div>`;
+    if (v) {
+      const btns = [...v.buttons].sort((a, b) => a[v.dir] - b[v.dir]);
+      h += `<div class="dirbadge ${v.dir}">${DIRS[v.dir].arrow} ${DIRS[v.dir].long}</div>
+        <div class="note">${v.ref ? '★ Posición del Sr. Maestro'
+          : ch.badRef ? 'Posición calculada por la app: el Sr. Maestro trae este acorde con una nota equivocada'
+          : 'Posición calculada por la app'}</div>
+        <div class="sub">Pitos · mano derecha</div>
+        <ul>${btns.map(b => `<li><b>${ref(b)}</b> — ${BASE_LAYOUT.treble[b.row].name}, pito ${b.idx + 1}: ${nnOct(b[v.dir])}</li>`).join('')}</ul>`;
+      if (v.buttons.length < ch.tones.length) h += '<div class="note">Se omite la quinta (común en acordes de séptima).</div>';
+    } else h += '<div class="warn">Este acorde no tiene una posición completa en los pitos de este acordeón.</div>';
+    h += '<div class="sub">Bajos · mano izquierda</div><ul>';
+    if (bass.bass) h += `<li><b>Bajo</b> ${Music.name(ch.rootPc, S.tuning.pref)} — ${DIRS[bass.bass.dir].label.toLowerCase()} (fila ${BASE_LAYOUT.bass[bass.bass.btn.row].name.toLowerCase()})</li>`;
+    if (bass.chord) h += `<li><b>Acorde</b> ${bassName(bass.chord.btn, bass.chord.dir)} — ${DIRS[bass.chord.dir].label.toLowerCase()} (fila ${BASE_LAYOUT.bass[bass.chord.btn.row].name.toLowerCase()})</li>`;
+    h += `</ul>${bass.warn.map(w => `<div class="warn">⚠ ${w}</div>`).join('')}
+      ${['maj', 'min', 'dom7', 'maj7', 'm7'].includes(ch.type) ? '' : '<div class="note">En los bajos no hay botón para este acorde: se acompaña con el bajo de la fundamental.</div>'}
+      ${ch.voicings.length > 1 ? `<div class="btnrow"><button id="aAlt">Ver posición ${ch.voicings[1 - ch.alt].ref ? 'del Sr. Maestro' : 'calculada'} ${DIRS[ch.voicings[1 - ch.alt].dir].label.toLowerCase()}</button></div>` : ''}`;
+    $('#aInfo').innerHTML = h;
+    if ($('#aAlt')) $('#aAlt').onclick = () => { ch.alt = 1 - ch.alt; renderChordTab(); playChordTab(); };
+
+    clearHl();
+    if (v) v.buttons.forEach(b => addHl(S.hl, b.id, v.dir));
+    if (bass.bass) addHl(S.bhl, bass.bass.btn.id, bass.bass.dir, 'B');
+    if (bass.chord) addHl(S.bhl, bass.chord.btn.id, bass.chord.dir, 'A');
+    setBellows(v ? v.dir : null);
+    renderKeys();
+    const letterOf = p => (ch.tones.find(t => t.pc === Music.pc(p)) || {}).letter;
+    Staff.render($('#aStaff'), {
+      staves: ['treble', 'bass'],
+      events: [{
+        notes: {
+          treble: v ? v.buttons.map(b => ({ midi: b[v.dir], letter: letterOf(b[v.dir]) })) : [],
+          bass: [{ midi: bassMidi(ch.rootPc), letter: ch.tones[0].letter }],
+        },
+        cls: v ? v.dir : 'na',
+        lines: [{ t: ch.name, cls: 'b' }, { t: v ? DIRS[v.dir].arrow : '✕', cls: v ? v.dir : '' }],
+      }],
+      colW: 90, zoom: 1.3,
+    });
+  }
+
+  function playChordTab() {
+    const ch = S.chord, v = chordVoicing(ch);
+    if (v) Sound.treble(v.buttons.map(b => b[v.dir]), 1.2);
+    const bass = chordTabBass(ch, v ? v.dir : 'push');
+    if (bass.bass) Sound.bass(bassMidi(ch.rootPc), 0.45);
+    if (bass.chord) setTimeout(() => Sound.bassChord(bassChordMidis(ch.rootPc, bass.chord.btn[bass.chord.dir + 'Q']), 0.4), 450);
+  }
+
   /* ---------------- Pestaña: explorar ---------------- */
   function setDir(d) {
     S.dir = d;
@@ -654,25 +865,25 @@ function renderScaleStaff() {
     if (!g) return;
     const map = isBass ? S.bhl : S.hl;
     const b = (isBass ? L.bass : L.treble).find(x => x.id === g.dataset.id);
-if (S.tab === 'solfeo') {
-  // Mitad de arriba del botón = cerrando, mitad de abajo = abriendo
-  const half = e.target.closest('.half');
-  const dir = half ? half.dataset.d : S.dir;
-  if (App.hooks.keyClick && App.hooks.keyClick(b, dir, isBass) === false) return;
-  if (isBass) {
-    if (b.type === 'bass') Sound.bass(bassMidi(b[dir]));
-    else Sound.bassChord(bassChordMidis(b[dir]));
-  } else Sound.treble([b[dir]]);
-  setBellows(dir);
-  return;
-}
+    if (S.tab === 'solfeo') {
+      // Mitad de arriba del botón = cerrando, mitad de abajo = abriendo
+      const half = e.target.closest('.half');
+      const dir = half ? half.dataset.d : S.dir;
+      if (App.hooks.keyClick && App.hooks.keyClick(b, dir, isBass) === false) return;
+      if (isBass) {
+        if (b.type === 'bass') Sound.bass(bassMidi(b[dir]));
+        else Sound.bassChord(bassChordMidis(b[dir], b[dir + 'Q']));
+      } else Sound.treble([b[dir]]);
+      setBellows(dir);
+      return;
+    }
     const h = map.get(b.id);
     const dir = S.tab === 'explore' ? S.dir
       : h && h.dir !== 'both' ? h.dir
       : S.display !== 'both' ? S.display : S.dir;
     if (isBass) {
       if (b.type === 'bass') Sound.bass(bassMidi(b[dir]));
-      else Sound.bassChord(bassChordMidis(b[dir]));
+      else Sound.bassChord(bassChordMidis(b[dir], b[dir + 'Q']));
     } else Sound.treble([b[dir]]);
     setBellows(dir);
     if (S.tab === 'explore') {
@@ -681,7 +892,7 @@ if (S.tab === 'solfeo') {
       addHl(map, b.id, dir);
       renderKeys();
       const what = isBass
-        ? `${b.type === 'bass' ? 'Bajo' : 'Acorde'} ${Music.name(b[dir], S.tuning.pref)} · fila ${BASE_LAYOUT.bass[b.row].name.toLowerCase()}`
+        ? `${b.type === 'bass' ? 'Bajo' : 'Acorde'} ${bassName(b, dir)} · fila ${BASE_LAYOUT.bass[b.row].name.toLowerCase()}`
         : `${ref(b)} — ${BASE_LAYOUT.treble[b.row].name}, pito ${b.idx + 1}: <b>${nnOct(b[dir])}</b>`;
       $('#exploreInfo').innerHTML = `${what} · <span style="color:var(--${dir})">${DIRS[dir].long}</span>`;
     }
@@ -696,7 +907,12 @@ if (S.tab === 'solfeo') {
       `<option value="${p}">${Music.spell(Music.letterOf(p, Music.rootPref(p, 'maj')), p)}</option>`).join('');
     rootSel.value = r;
     const t = $('#sType').value || 'mayor';
-    $('#sType').innerHTML = Object.entries(Music.SCALES).map(([k, s]) => `<option value="${k}">${s.name}</option>`).join('');
+    // La cromática y la de tonos enteros van aparte: no son escalas mayores ni menores
+    const opt = ([k, s]) => `<option value="${k}">${s.name}</option>`;
+    const special = s => s.chromatic || s.wholeTone;
+    const all = Object.entries(Music.SCALES);
+    $('#sType').innerHTML = `<optgroup label="Escalas mayores y menores">${all.filter(([, s]) => !special(s)).map(opt).join('')}</optgroup>
+      <optgroup label="Escalas especiales (no son mayores ni menores)">${all.filter(([, s]) => special(s)).map(opt).join('')}</optgroup>`;
     $('#sType').value = t;
     const iv = $('#sInt').value || 'simple';
     $('#sInt').innerHTML = Object.entries(Music.INTERVALS).map(([k, s]) => `<option value="${k}">${s.name}</option>`).join('');
@@ -711,6 +927,11 @@ if (S.tab === 'solfeo') {
     stop();
     if (S.tab === 'circles') computeCircle();
     else if (S.tab === 'scales') computeScale();
+    else if (S.tab === 'chords') computeChordTab(false);
+    else if (S.tab === 'teoria') {
+      clearHl(); setBellows(null); renderKeys();
+      if (App.hooks.teoria) App.hooks.teoria();
+    }
     else if (S.tab === 'solfeo') {
       clearHl(); setBellows(null); renderKeys();
       if (App.hooks.refresh) App.hooks.refresh();
@@ -746,14 +967,14 @@ if (S.tab === 'solfeo') {
     }, 0);
   }));
 
-$('#cStaff').addEventListener('click', e => {
-  const c = e.target.closest('[data-i]');
-  if (c) { stop(); selectChord(+c.dataset.i); }
-});
-$('#sStaff').addEventListener('click', e => {
-  const c = e.target.closest('[data-i]');
-  if (c) { stop(); selectStep(+c.dataset.i); }
-});
+  $('#cStaff').addEventListener('click', e => {
+    const c = e.target.closest('[data-i]');
+    if (c) { stop(); selectChord(+c.dataset.i); }
+  });
+  $('#sStaff').addEventListener('click', e => {
+    const c = e.target.closest('[data-i]');
+    if (c) { stop(); selectStep(+c.dataset.i); }
+  });
   $('#cKey').addEventListener('change', () => { fillCircleTypes(); S.selChord = 0; computeCircle(); });
   $('#cType').addEventListener('change', () => { S.selChord = 0; computeCircle(); });
   $('#cPlay').addEventListener('click', playCircle);
@@ -763,7 +984,7 @@ $('#sStaff').addEventListener('click', e => {
     if (n) { stop(); selectChord(+n.dataset.i); }
   });
 
-  ['#sRoot', '#sType', '#sHand', '#sInt', '#sOct', '#sSpan'].forEach(id => $(id).addEventListener('change', computeScale));
+  ['#sRoot', '#sType', '#sHand', '#sInt', '#sOct', '#sSpan', '#sFing'].forEach(id => $(id).addEventListener('change', computeScale));
   $('#sPlay').addEventListener('click', playScale);
   $('#sPrev').addEventListener('click', () => { stop(); selectStep(S.selStep < 0 ? 0 : S.selStep - 1); });
   $('#sNext').addEventListener('click', () => { stop(); selectStep(S.selStep + 1); });
@@ -772,6 +993,14 @@ $('#sStaff').addEventListener('click', e => {
   $('#steps').addEventListener('click', e => {
     const s = e.target.closest('.step');
     if (s) { stop(); selectStep(+s.dataset.i); }
+  });
+
+  $('#aType').addEventListener('change', () => computeChordTab(true));
+  $('#aRoot').addEventListener('change', () => computeChordTab(true));
+  $('#aPlay').addEventListener('click', playChordTab);
+  $('#aRoots').addEventListener('click', e => {
+    const c = e.target.closest('.chip');
+    if (c) { $('#aRoot').value = c.dataset.p; computeChordTab(true); }
   });
 
   $$('#dirSeg button').forEach(b => b.addEventListener('click', () => setDir(b.dataset.dir)));
@@ -822,7 +1051,7 @@ $('#sStaff').addEventListener('click', e => {
   Object.assign(App, {
     S, DIRS, store, other,
     nn, nnOct, refAny, bassMidi, bassChordMidis,
-    addHl, clearHl, renderKeys, setBellows, circleChords, playChord,
+    addHl, clearHl, renderKeys, setBellows, circleChords, playChord, chordFor,
     tabOpen: tab => $(`.tabs button[data-tab="${tab}"]`).click(),
   });
   Object.defineProperty(App, 'L', { get: () => L });  // la distribución cambia con el tono

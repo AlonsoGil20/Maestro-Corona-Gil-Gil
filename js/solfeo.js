@@ -368,7 +368,7 @@
       if (hard()) Music.CIRCLES.min.forEach((c, i) => list.push({ c, i, p: (key + 9) % 12, mode: 'min' }));
       const ans = rand(0, list.length - 1);
       const playCirc = o => {
-        const chords = App.circleChords(o.p, o.mode, o.c.degrees);
+        const chords = App.circleChords(o.p, o.mode, o.c.degrees, o.c.ref);
         [...chords, chords[0]].forEach((ch, k) => later(() => App.playChord(ch, 480), k * 960));
       };
       const label = o => `${o.c.name} · ${Music.keyName(o.p, o.mode)}`;

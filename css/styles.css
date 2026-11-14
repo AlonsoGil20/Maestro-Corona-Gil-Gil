@@ -385,3 +385,41 @@ label.check { flex-direction: row; align-items: center; gap: 6px; font-size: 13p
 .ios-help .ios-icon { display: inline-block; min-width: 22px; text-align: center; border: 1px solid var(--line);
   border-radius: 6px; background: #2d2520; color: var(--pull); font-weight: 700; }
 .ios-help button { width: 100%; margin-top: 6px; }
+
+/* Acordes: las 12 fundamentales del tipo elegido */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.chip { padding: 6px 10px; border-radius: 18px; font-weight: 700; font-size: 13px; color: #fff; }
+.chip.push { background: #6b2a17; border-color: var(--push); }
+.chip.pull { background: #133e5f; border-color: var(--pull); }
+.chip.na { background: #2a2420; border: 1px dashed var(--na); color: var(--muted); }
+.chip.active { outline: 3px solid var(--gold); outline-offset: 1px; }
+
+/* ---------- Teoría: libro ---------- */
+.teoria { display: flex; flex-direction: column; gap: 10px; }
+.t-select { flex-direction: row; align-items: center; gap: 8px; font-size: 13px; }
+.t-select select { flex: 1; max-width: 520px; }
+.t-indexbox { border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; }
+.t-indexbox > summary { cursor: pointer; color: var(--gold); font-weight: 700; font-size: 14px; }
+.t-index { font-size: 13px; margin-top: 8px; columns: 2 240px; }
+.t-index details { margin-bottom: 6px; break-inside: avoid; }
+.t-index summary { cursor: pointer; font-weight: 700; color: var(--gold); padding: 4px 0; }
+.t-lec { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 5px 8px; border-radius: 6px; color: var(--muted); font-size: 13px; }
+.t-lec.leida { color: var(--text); }
+.t-lec.active { background: #3a2a10; color: var(--gold); font-weight: 700; }
+.t-prog { margin-bottom: 8px; color: var(--muted); }
+.t-prog .bar { height: 6px; border-radius: 3px; background: #3a312b; overflow: hidden; margin-top: 4px; }
+.t-prog .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), #2fae5f); }
+.t-lesson { font-size: 16px; line-height: 1.65; max-width: 720px; }
+.t-lesson p { margin: 10px 0; }
+.t-head small { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+.t-head h2 { margin: 2px 0 8px; color: var(--gold); font-size: 24px; }
+.t-ej { background: #2d2520; border-radius: 12px; padding: 10px; margin: 12px 0; }
+.t-ej-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; font-size: 14px; color: var(--muted); }
+.t-ej .staff-wrap { margin: 0; }
+.t-ir { background: #3a2a10; border-color: var(--gold); color: var(--gold); }
+.t-q { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 12px 0; }
+.t-q .answers { margin: 8px 0 4px; }
+.t-why { font-size: 14px; color: var(--muted); }
+.t-why .ok { color: #2fae5f; font-weight: 700; } .t-why .bad { color: var(--push); font-weight: 700; }
+.t-nav { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+.t-nav button:disabled { opacity: .4; cursor: default; }

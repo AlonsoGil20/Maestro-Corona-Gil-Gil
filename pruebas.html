@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pruebas · Maestro Corona Gil&amp;Gil</title>
+  <style>
+    :root { --bg: #14110f; --card: #221c18; --line: #3a312b; --text: #f3ece4; --muted: #a8998b; --ok: #2fae5f; --bad: #ff6b3d; --gold: #e5b94e; }
+    body { margin: 0; padding: 16px; background: var(--bg); color: var(--text); font: 15px system-ui, -apple-system, sans-serif; }
+    h1 { color: var(--gold); font-size: 22px; margin: 0 0 4px; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .total { font-size: 20px; font-weight: 800; margin: 14px 0; }
+    .total.ok { color: var(--ok); } .total.bad { color: var(--bad); }
+    section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin: 10px 0; }
+    section h2 { font-size: 16px; margin: 4px 0 6px; }
+    .ok { color: var(--ok); } .bad { color: var(--bad); }
+    ul { margin: 4px 0; padding-left: 20px; font-size: 13px; }
+    iframe { width: 1px; height: 1px; border: 0; position: absolute; left: -10px; }
+  </style>
+</head>
+<body>
+  <h1>Pruebas de la app</h1>
+  <p class="muted">Revisa el teclado contra el Sr. Maestro y el diagrama de Hohner, y cada acorde, círculo y escala contra la
+    teoría musical, en los 10 tonos del acordeón. Se abre sola la app en segundo plano.</p>
+  <div id="total" class="total">Probando…</div>
+  <div id="out"></div>
+  <iframe id="app" src="index.html"></iframe>
+  <script src="js/pruebas.js"></script>
+</body>
+</html>
