@@ -85,11 +85,20 @@ const Music = (() => {
     maj: {
       I: { deg: 0, q: 'maj' }, ii: { deg: 1, q: 'min' }, iii: { deg: 2, q: 'min' },
       IV: { deg: 3, q: 'maj' }, V: { deg: 4, q: 'maj' }, V7: { deg: 4, q: 'dom7' },
-      vi: { deg: 5, q: 'min' }, I7: { deg: 0, q: 'dom7' },
+      vi: { deg: 5, q: 'min' }, I7: { deg: 0, q: 'dom7' }, 'vii°': { deg: 6, q: 'dim' },
+      // Con séptimas
+      Imaj7: { deg: 0, q: 'maj7' }, ii7: { deg: 1, q: 'm7' }, iii7: { deg: 2, q: 'm7' }, IVmaj7: { deg: 3, q: 'maj7' },
+      vi7: { deg: 5, q: 'm7' }, 'viiø7': { deg: 6, q: 'm7b5' },
     },
     min: {
       i: { deg: 0, q: 'min' }, III: { deg: 2, q: 'maj' }, iv: { deg: 3, q: 'min' },
       V7: { deg: 4, q: 'dom7' }, VI: { deg: 5, q: 'maj' }, VII: { deg: 6, q: 'maj' },
+      'ii°': { deg: 1, q: 'dim' }, v: { deg: 4, q: 'min' }, V: { deg: 4, q: 'maj' },
+      // alt: se sube medio tono la nota de la escala menor natural (menor armónica)
+      'III+': { deg: 2, q: 'aug' }, 'vii°': { deg: 6, q: 'dim', alt: 1 },
+      // Con séptimas
+      i7: { deg: 0, q: 'm7' }, 'iiø7': { deg: 1, q: 'm7b5' }, IIImaj7: { deg: 2, q: 'maj7' }, iv7: { deg: 3, q: 'm7' },
+      v7: { deg: 4, q: 'm7' }, VImaj7: { deg: 5, q: 'maj7' }, VII7: { deg: 6, q: 'dom7' },
     },
   };
 
@@ -100,11 +109,17 @@ const Music = (() => {
       { name: 'Círculo armónico (I – vi – ii – V7)', degrees: ['I', 'vi', 'ii', 'V7'], ref: 'armonico' },
       { name: 'Círculo melódico (I – vi – IV – V7)', degrees: ['I', 'vi', 'IV', 'V7'], ref: 'melodico' },
       { name: 'Con séptima (I – I7 – IV – V7)', degrees: ['I', 'I7', 'IV', 'V7'] },
+      // Un acorde sobre cada nota de la escala, hasta la octava
+      { name: 'Escala armonizada (I – ii – iii – IV – V – vi – vii° – I)', degrees: ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°', 'I'], escala: true },
+      { name: 'Escala armonizada con séptimas (Imaj7 – ii7 – iii7 – IVmaj7 – V7 – vi7 – viiø7)', degrees: ['Imaj7', 'ii7', 'iii7', 'IVmaj7', 'V7', 'vi7', 'viiø7', 'Imaj7'], escala: true },
     ],
     min: [
       { name: 'Básico menor (i – iv – V7)', degrees: ['i', 'iv', 'V7'] },
       { name: 'Con relativo (i – III – iv – V7)', degrees: ['i', 'III', 'iv', 'V7'] },
       { name: 'Andaluz (i – VII – VI – V7)', degrees: ['i', 'VII', 'VI', 'V7'] },
+      { name: 'Escala armonizada, menor natural (i – ii° – III – iv – v – VI – VII – i)', degrees: ['i', 'ii°', 'III', 'iv', 'v', 'VI', 'VII', 'i'], escala: true },
+      { name: 'Escala armonizada, menor armónica (i – ii° – III+ – iv – V – VI – vii° – i)', degrees: ['i', 'ii°', 'III+', 'iv', 'V', 'VI', 'vii°', 'i'], escala: true },
+      { name: 'Escala armonizada con séptimas, menor natural (i7 – iiø7 – IIImaj7 – iv7 – v7 – VImaj7 – VII7)', degrees: ['i7', 'iiø7', 'IIImaj7', 'iv7', 'v7', 'VImaj7', 'VII7', 'i7'], escala: true },
     ],
   };
 

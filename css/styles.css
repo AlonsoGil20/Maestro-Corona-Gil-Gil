@@ -191,6 +191,14 @@ svg.keys { height: auto; display: block; }
 .node text { text-anchor: middle; fill: #fff; pointer-events: none; }
 .node .nm { font-size: 17px; font-weight: 700; }
 .node .dg { font-size: 11px; opacity: .85; }
+.node .nm.long { font-size: 12px; }
+.map-wrap { overflow-x: auto; }
+.cmap { width: 100%; border-collapse: collapse; font-size: 13px; margin: 6px 0; }
+.cmap th { text-align: left; color: var(--muted); font-weight: 500; border-bottom: 1px solid #ffffff22; padding: 4px 6px; }
+.cmap td { padding: 4px 6px; border-bottom: 1px solid #ffffff11; white-space: nowrap; }
+.cmap tbody tr { cursor: pointer; }
+.cmap tbody tr:hover { background: #ffffff0d; }
+.cmap .push { color: var(--push); } .cmap .pull { color: var(--pull); } .cmap .no { color: var(--muted); }
 .center-t { text-anchor: middle; fill: var(--gold); font-size: 16px; font-weight: 700; }
 .center-s { text-anchor: middle; fill: var(--muted); font-size: 11px; }
 

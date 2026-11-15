@@ -177,10 +177,10 @@
       const L = App.L;
       ['maj', 'min'].forEach(mode => Music.CIRCLES[mode].forEach(c => {
         for (let key = 0; key < 12; key++) {
-          const chords = App.circleChords(key, mode, c.degrees, c.ref);
+          const chords = App.circleChords(key, mode, c.degrees, c.ref, c.escala);
           chords.forEach(ch => {
             const q = Music.CHORDS[ch.quality];
-            const root = pc(key + Music.SCALES[mode === 'maj' ? 'mayor' : 'menor'].steps[Music.DEGREES[mode][ch.deg].deg]);
+            const root = pc(key + Music.SCALES[mode === 'maj' ? 'mayor' : 'menor'].steps[Music.DEGREES[mode][ch.deg].deg] + (Music.DEGREES[mode][ch.deg].alt || 0));
             t.check(ch.rootPc === root, `${tu.name} · ${c.name} en ${Music.keyName(key, mode)}: raíz de ${ch.deg}`);
             if (c.ref) { refEsperados++; if (ch.voicings[0] && ch.voicings[0].ref) conRef++; }
             ch.voicings.forEach(v => {

@@ -1,7 +1,15 @@
 /* Instalación como app de escritorio (PWA) y funcionamiento sin internet. */
 (() => {
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
-    navigator.serviceWorker.register('sw.js').catch(() => { /* sin modo sin conexión */ });
+    // Si ya había una versión guardada y llega una nueva, se recarga una vez para mostrarla enseguida
+    const habiaVersion = !!navigator.serviceWorker.controller;
+    let recargada = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!habiaVersion || recargada) return;
+      recargada = true;
+      location.reload();
+    });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => { /* sin modo sin conexión */ });
   }
 
   const btn = document.getElementById('installBtn');
